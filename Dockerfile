@@ -35,12 +35,13 @@ RUN mkdir build && cd build && \
 # Stage 2: Runtime
 FROM ubuntu:22.04
 
-# Install runtime dependencies
+# Install runtime dependencies (only runtime libraries needed)
 RUN apt-get update && apt-get install -y \
     libssl3 \
-    libjsoncpp1 \
+    libjsoncpp25 \
     uuid-runtime \
     zlib1g \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy Drogon libraries from builder
@@ -52,7 +53,7 @@ WORKDIR /app
 COPY --from=builder /app/build/flower-exchange-app .
 
 # Update library cache
-RUN ldconfig
+RUN ldconfig 2>&1 || true
 
 # Expose port (Railway will override dynamically)
 EXPOSE 5555
