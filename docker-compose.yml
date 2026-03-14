@@ -1,0 +1,26 @@
+services:
+  flower-exchange:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: flower-exchange-backend
+    ports:
+      - "5555:5555"
+    environment:
+      PORT: 5555
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5555/exchange/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    volumes:
+      # Optional: mount data directory for CSV files
+      - ./data:/app/data
+    networks:
+      - flower-network
+
+networks:
+  flower-network:
+    driver: bridge
