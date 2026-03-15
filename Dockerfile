@@ -2,7 +2,7 @@
 FROM ubuntu:22.04 AS builder
 
 # Install build dependencies
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     cmake \
     g++ \
     git \
@@ -13,57 +13,60 @@ RUN apt-get update && apt-get install -y \
     zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Drogon from source
+# Install Drogon framework from source
 WORKDIR /tmp/drogon_build
 RUN git clone https://github.com/drogonframework/drogon.git . && \
     git submodule update --init && \
     mkdir build && cd build && \
-    cmake .. -DCMAKE_BUILD_TYPE=Release && \
+    cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF && \
     make -j$(nproc) && \
     make install && \
     ldconfig
 
-# Copy source code
-WORKDIR /app
+# Copy and build application
+WORKDIR /build
 COPY . .
-
-# Build the application
-RUN mkdir build && cd build && \
-    cmake .. -DCMAKE_BUILD_TYPE=Release && \
+RUN cmake . -DCMAKE_BUILD_TYPE=Release && \
     make -j$(nproc)
 
 # Stage 2: Runtime
 FROM ubuntu:22.04
 
-# Install runtime dependencies (only runtime libraries needed)
-RUN apt-get update && apt-get install -y \
+# Install only runtime dependencies needed
+RUN apt-get update && apt-get install -y --no-install-recommends \
     libssl3 \
     libjsoncpp25 \
     uuid-runtime \
     zlib1g \
-    ca-certificates \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy Drogon libraries from builder
+# Copy Drogon runtime libraries from builder
 COPY --from=builder /usr/local/lib /usr/local/lib
 COPY --from=builder /usr/local/include /usr/local/include
 
-# Copy compiled application from builder
-WORKDIR /app
-COPY --from=builder /app/build/flower-exchange-app .
+# Create app user for security (don't run as root)
+RUN useradd -m -u 1000 appuser
 
-# Create directory for CSV reports (separate from /app to avoid volume override)
-RUN mkdir -p /data
+# Setup application directory
+WORKDIR /app
+COPY --from=builder --chown=appuser:appuser /build/flower-exchange-app .
+
+# Create data directory for persistent CSV reports
+RUN mkdir -p /data && chown appuser:appuser /data
 
 # Update library cache
-RUN ldconfig 2>&1 || true
+RUN ldconfig
 
-# Expose port (Railway will override dynamically)
+# Switch to non-root user
+USER appuser
+
+# Expose default port (Railway will override via PORT env var)
 EXPOSE 5555
 
-# Health check (optional)
+# Health check that respects PORT environment variable
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD timeout 5 bash -c 'exec 3<>/dev/tcp/127.0.0.1/5555' || exit 1
+    CMD PORT_CHECK=${PORT:-5555} && curl -f http://localhost:${PORT_CHECK}/api/health || exit 1
 
-# Run from /app where the executable is located
-CMD ["./flower-exchange-app"]
+# Run application
+ENTRYPOINT ["./flower-exchange-app"]
