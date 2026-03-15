@@ -2,7 +2,7 @@
 FROM ubuntu:22.04 AS builder
 
 # Install build dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y \
     ca-certificates \
     cmake \
     g++ \
@@ -14,60 +14,54 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Drogon framework from source
+# Install Drogon from source
 WORKDIR /tmp/drogon_build
 RUN git clone https://github.com/drogonframework/drogon.git . && \
     git submodule update --init && \
     mkdir build && cd build && \
-    cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF && \
+    cmake .. -DCMAKE_BUILD_TYPE=Release && \
     make -j$(nproc) && \
     make install && \
     ldconfig
 
-# Copy and build application
-WORKDIR /build
+# Copy source code
+WORKDIR /app
 COPY . .
-RUN cmake . -DCMAKE_BUILD_TYPE=Release && \
+
+# Build the application
+RUN mkdir build && cd build && \
+    cmake .. -DCMAKE_BUILD_TYPE=Release && \
     make -j$(nproc)
 
 # Stage 2: Runtime
 FROM ubuntu:22.04
 
-# Install only runtime dependencies needed
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Install runtime dependencies (only runtime libraries needed)
+RUN apt-get update && apt-get install -y \
     libssl3 \
     libjsoncpp25 \
     uuid-runtime \
     zlib1g \
-    curl \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy Drogon runtime libraries from builder
+# Copy Drogon libraries from builder
 COPY --from=builder /usr/local/lib /usr/local/lib
 COPY --from=builder /usr/local/include /usr/local/include
 
-# Create app user for security (don't run as root)
-RUN useradd -m -u 1000 appuser
-
-# Setup application directory
+# Copy compiled application from builder
 WORKDIR /app
-COPY --from=builder --chown=appuser:appuser /build/flower-exchange-app .
-
-# Create data directory for persistent CSV reports
-RUN mkdir -p /data && chown appuser:appuser /data
+COPY --from=builder /app/build/flower-exchange-app .
 
 # Update library cache
-RUN ldconfig
+RUN ldconfig 2>&1 || true
 
-# Switch to non-root user
-USER appuser
-
-# Expose default port (Railway will override via PORT env var)
+# Expose port (Railway will override dynamically)
 EXPOSE 5555
 
-# Health check that respects PORT environment variable
+# Health check (optional)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD PORT_CHECK=${PORT:-5555} && curl -f http://localhost:${PORT_CHECK}/api/health || exit 1
+    CMD timeout 5 bash -c 'exec 3<>/dev/tcp/127.0.0.1/5555' || exit 1
 
-# Run application
-ENTRYPOINT ["./flower-exchange-app"]
+# Run the application
+CMD ["./flower-exchange-app"]
