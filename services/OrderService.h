@@ -26,7 +26,7 @@ public:
     std::vector<OrderPtr> getAllSellOrders() const;
 
     // Bulk operations
-    int submitBulkOrders(const std::string& csvContent);
+    std::vector<ExecutionReportPtr> submitBulkOrders(const std::string& csvContent);
 
     const std::shared_ptr<Exchange>& getExchange() const;
 

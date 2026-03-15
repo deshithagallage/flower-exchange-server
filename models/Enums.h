@@ -15,7 +15,8 @@ enum class Instrument {
 
 enum class Side {
     BUY,
-    SELL
+    SELL,
+    UNKNOWN
 };
 
 enum class OrderStatus {

@@ -20,7 +20,7 @@ void OrderCtrl::addOrder(const HttpRequestPtr& req,
             return;
         }
 
-        // Extract order fields from JSON
+        // Extract order fields from JSON - allow empty/invalid values to be processed as rejections
         std::string clientId = jsonObj->get("clientId", "").asString();
         std::string clientOrderId = jsonObj->get("clientOrderId", "").asString();
         std::string instrumentStr = jsonObj->get("instrument", "").asString();
@@ -28,16 +28,8 @@ void OrderCtrl::addOrder(const HttpRequestPtr& req,
         double price = jsonObj->get("price", 0.0).asDouble();
         int quantity = jsonObj->get("quantity", 0).asInt();
 
-        if (clientOrderId.empty() || instrumentStr.empty() || sideStr.empty() || price <= 0 || quantity <= 0) {
-            auto resp = HttpResponse::newHttpResponse();
-            resp->setStatusCode(HttpStatusCode::k400BadRequest);
-            resp->setContentTypeCode(CT_APPLICATION_JSON);
-            resp->setBody("{\"status\":\"error\",\"message\":\"Missing or invalid required fields\"}");
-            callback(resp);
-            return;
-        }
-
-        // Create Order object
+        // Create Order object with provided or default values
+        // Invalid values will be caught by validators and return REJECTED reports
         auto order = std::make_shared<Order>(
             clientId,
             clientOrderId,
@@ -47,19 +39,29 @@ void OrderCtrl::addOrder(const HttpRequestPtr& req,
             quantity
         );
 
-        LOG_INFO << "Adding single order: " << clientOrderId 
-                 << " (" << sideStr << " " << quantity << " @ " << price << ")";
+        LOG_INFO << "Processing order: " << clientOrderId;
 
         // Submit order through service (service handles report persistence)
         auto reports = orderService_->submitOrder(order);
 
         LOG_INFO << "Generated " << reports.size() << " execution reports for order " << clientOrderId;
 
-        // Build response with reports
+        // Build response with all reports (including REJECTED ones)
         Json::Value responseJson;
         responseJson["status"] = "success";
         responseJson["clientOrderId"] = clientOrderId;
         responseJson["reportsGenerated"] = static_cast<int>(reports.size());
+        responseJson["reports"] = Json::arrayValue;
+
+        for (const auto& report : reports) {
+            Json::Value reportJson;
+            reportJson["exchangeOrderId"] = report->getExchangeOrderId();
+            reportJson["status"] = executionStatusStr(report->getStatus());
+            reportJson["quantity"] = report->getQuantity();
+            reportJson["price"] = report->getPrice();
+            reportJson["reason"] = report->getReason();
+            responseJson["reports"].append(reportJson);
+        }
 
         auto resp = HttpResponse::newHttpResponse();
         resp->setStatusCode(HttpStatusCode::k200OK);
@@ -145,14 +147,30 @@ void OrderCtrl::uploadOrders(const HttpRequestPtr& req,
         LOG_INFO << "CSV content to parse: " << csvContent;
         
         // Process orders through service (handles parsing and persistence)
-        int successCount = orderService_->submitBulkOrders(csvContent);
+        auto reports = orderService_->submitBulkOrders(csvContent);
 
-        LOG_INFO << "Successfully processed " << successCount << " bulk orders";
+        LOG_INFO << "Generated " << reports.size() << " execution reports from bulk upload";
+        
+        Json::Value responseJson;
+        responseJson["status"] = "success";
+        responseJson["reportsGenerated"] = static_cast<int>(reports.size());
+        responseJson["reports"] = Json::arrayValue;
+
+        for (const auto& report : reports) {
+            Json::Value reportJson;
+            reportJson["clientOrderId"] = report->getClientOrderId();
+            reportJson["exchangeOrderId"] = report->getExchangeOrderId();
+            reportJson["status"] = executionStatusStr(report->getStatus());
+            reportJson["quantity"] = report->getQuantity();
+            reportJson["price"] = report->getPrice();
+            reportJson["reason"] = report->getReason();
+            responseJson["reports"].append(reportJson);
+        }
         
         auto resp = HttpResponse::newHttpResponse();
         resp->setStatusCode(HttpStatusCode::k200OK);
         resp->setContentTypeCode(CT_APPLICATION_JSON);
-        resp->setBody("{\"status\":\"success\",\"ordersProcessed\":" + std::to_string(successCount) + "}");
+        resp->setBody(responseJson.toStyledString());
         callback(resp);
     } catch (const std::exception& e) {
         LOG_ERROR << "Error in bulk upload: " << e.what();
@@ -355,6 +373,34 @@ void OrderCtrl::getSellOrders(const HttpRequestPtr& req,
         LOG_ERROR << "Error getting sell orders: " << e.what();
         auto resp = HttpResponse::newHttpResponse();
         resp->setStatusCode(HttpStatusCode::k400BadRequest);
+        resp->setContentTypeCode(CT_APPLICATION_JSON);
+        resp->setBody("{\"status\":\"error\",\"message\":\"" + std::string(e.what()) + "\"}");
+        callback(resp);
+    }
+}
+
+void OrderCtrl::resetExchange(const HttpRequestPtr& req,
+                             std::function<void(const HttpResponsePtr&)>&& callback) {
+    try {
+        LOG_INFO << "Resetting exchange state - clearing all order books and execution reports";
+        
+        // Reset the exchange state
+        orderService_->reset();
+        
+        Json::Value responseJson;
+        responseJson["status"] = "success";
+        responseJson["message"] = "Exchange reset successfully - all order books cleared and execution reports deleted";
+
+        auto resp = HttpResponse::newHttpResponse();
+        resp->setStatusCode(HttpStatusCode::k200OK);
+        resp->setContentTypeCode(CT_APPLICATION_JSON);
+        resp->setBody(responseJson.toStyledString());
+        callback(resp);
+
+    } catch (const std::exception& e) {
+        LOG_ERROR << "Error resetting exchange: " << e.what();
+        auto resp = HttpResponse::newHttpResponse();
+        resp->setStatusCode(HttpStatusCode::k500InternalServerError);
         resp->setContentTypeCode(CT_APPLICATION_JSON);
         resp->setBody("{\"status\":\"error\",\"message\":\"" + std::string(e.what()) + "\"}");
         callback(resp);

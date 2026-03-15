@@ -16,6 +16,7 @@ public:
     ADD_METHOD_TO(OrderCtrl::getOrdersByInstrument, "/api/orders/instrument", Get);
     ADD_METHOD_TO(OrderCtrl::getBuyOrders, "/api/orders/buy", Get);
     ADD_METHOD_TO(OrderCtrl::getSellOrders, "/api/orders/sell", Get);
+    ADD_METHOD_TO(OrderCtrl::resetExchange, "/api/orders/reset", Post);
     METHOD_LIST_END
 
     static std::shared_ptr<OrderService> orderService_;
@@ -36,6 +37,9 @@ public:
                      std::function<void(const HttpResponsePtr&)>&& callback);
 
     void getSellOrders(const HttpRequestPtr& req,
+                      std::function<void(const HttpResponsePtr&)>&& callback);
+
+    void resetExchange(const HttpRequestPtr& req,
                       std::function<void(const HttpResponsePtr&)>&& callback);
 };
 

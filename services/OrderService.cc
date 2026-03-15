@@ -1,5 +1,6 @@
 #include "OrderService.h"
 #include <cstdlib>
+#include <cstdio>
 #include <filesystem>
 
 namespace flower_exchange {
@@ -94,26 +95,29 @@ void OrderService::reset() {
     if (exchange_) {
         exchange_->clear();
     }
+    
+    // Clear CSV file
+    std::string reportPath = getDataDir() + "/execution_reports.csv";
+    std::remove(reportPath.c_str());
 }
 
-int OrderService::submitBulkOrders(const std::string& csvContent) {
+std::vector<ExecutionReportPtr> OrderService::submitBulkOrders(const std::string& csvContent) {
+    std::vector<ExecutionReportPtr> allReports;
+    
     if (!exchange_ || csvContent.empty()) {
-        return 0;
+        return allReports;
     }
     
     // Parse orders from CSV content
     auto orders = CSVReader::readOrdersFromString(csvContent);
     
-    // Process each order
-    int successCount = 0;
+    // Process each order and collect all reports
     for (const auto& order : orders) {
         auto reports = submitOrder(order);  // submitOrder also writes to CSV
-        if (!reports.empty()) {
-            successCount++;
-        }
+        allReports.insert(allReports.end(), reports.begin(), reports.end());
     }
     
-    return successCount;
+    return allReports;
 }
 
 } // namespace flower_exchange

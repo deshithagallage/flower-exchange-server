@@ -7,11 +7,15 @@ namespace flower_exchange {
 
 // Side conversions
 inline Side strToSide(const std::string& s) {
-    return (s == "BUY") ? Side::BUY : Side::SELL;
+    if (s == "BUY") return Side::BUY;
+    if (s == "SELL") return Side::SELL;
+    return Side::UNKNOWN;
 }
 
 inline std::string sideStr(Side s) {
-    return (s == Side::BUY) ? "BUY" : "SELL";
+    if (s == Side::BUY) return "BUY";
+    if (s == Side::SELL) return "SELL";
+    return "UNKNOWN";
 }
 
 // Instrument conversions

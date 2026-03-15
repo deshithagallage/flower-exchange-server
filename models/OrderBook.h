@@ -55,7 +55,8 @@ private:
     ExecutionReportPtr generateReport(const OrderPtr& order,
                                      ExecutionStatus status,
                                      const std::string& reason = "",
-                                     double executionPrice = -1.0);
+                                     double executionPrice = -1.0,
+                                     int fillQtyThisMatch = -1);
 };
 
 } // namespace flower_exchange

@@ -38,11 +38,11 @@ std::vector<ExecutionReportPtr> Exchange::processOrder(OrderPtr order) {
         order->setStatus(OrderStatus::REJECTED);
         auto report = std::make_shared<ExecutionReport>(
             order->getClientOrderId(),
-            "",  // No exchange ID yet
+            "",  // No exchange ID for rejected orders
             order->getInstrument(),
             order->getSide(),
             ExecutionStatus::REJECTED,
-            0,
+            order->getQuantity(),  // Show original order quantity
             order->getPrice(),
             rejectReason
         );

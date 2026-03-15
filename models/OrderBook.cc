@@ -64,21 +64,21 @@ std::vector<ExecutionReportPtr> OrderBook::processBuyOrder(OrderPtr incoming) {
         // Generate report for incoming order FIRST after this match (use matched order's price)
         if (incoming->isFilled()) {
             incoming->setStatus(OrderStatus::FILLED);
-            reports.push_back(generateReport(incoming, ExecutionStatus::FILL, "", matchedOrder->getPrice()));
+            reports.push_back(generateReport(incoming, ExecutionStatus::FILL, "", matchedOrder->getPrice(), matchQty));
         } else if (incoming->getRemainingQuantity() < incoming->getQuantity()) {
             // Partially filled after this match
             incoming->setStatus(OrderStatus::PARTIALLY_FILLED);
-            reports.push_back(generateReport(incoming, ExecutionStatus::PFILL, "", matchedOrder->getPrice()));
+            reports.push_back(generateReport(incoming, ExecutionStatus::PFILL, "", matchedOrder->getPrice(), matchQty));
         }
 
         // Then generate report for matched sell order (use its own price)
         if (matchedOrder->isFilled()) {
             matchedOrder->setStatus(OrderStatus::FILLED);
-            reports.push_back(generateReport(matchedOrder, ExecutionStatus::FILL));
+            reports.push_back(generateReport(matchedOrder, ExecutionStatus::FILL, "", -1.0, matchQty));
             sellQueue.pop_front();
         } else {
             matchedOrder->setStatus(OrderStatus::PARTIALLY_FILLED);
-            reports.push_back(generateReport(matchedOrder, ExecutionStatus::PFILL));
+            reports.push_back(generateReport(matchedOrder, ExecutionStatus::PFILL, "", -1.0, matchQty));
         }
 
         // Remove empty price level
@@ -125,21 +125,21 @@ std::vector<ExecutionReportPtr> OrderBook::processSellOrder(OrderPtr incoming) {
         // Generate report for incoming order FIRST after this match (use matched order's price)
         if (incoming->isFilled()) {
             incoming->setStatus(OrderStatus::FILLED);
-            reports.push_back(generateReport(incoming, ExecutionStatus::FILL, "", matchedOrder->getPrice()));
+            reports.push_back(generateReport(incoming, ExecutionStatus::FILL, "", matchedOrder->getPrice(), matchQty));
         } else if (incoming->getRemainingQuantity() < incoming->getQuantity()) {
             // Partially filled after this match
             incoming->setStatus(OrderStatus::PARTIALLY_FILLED);
-            reports.push_back(generateReport(incoming, ExecutionStatus::PFILL, "", matchedOrder->getPrice()));
+            reports.push_back(generateReport(incoming, ExecutionStatus::PFILL, "", matchedOrder->getPrice(), matchQty));
         }
 
         // Then generate report for matched buy order (use its own price)
         if (matchedOrder->isFilled()) {
             matchedOrder->setStatus(OrderStatus::FILLED);
-            reports.push_back(generateReport(matchedOrder, ExecutionStatus::FILL));
+            reports.push_back(generateReport(matchedOrder, ExecutionStatus::FILL, "", -1.0, matchQty));
             buyQueue.pop_front();
         } else {
             matchedOrder->setStatus(OrderStatus::PARTIALLY_FILLED);
-            reports.push_back(generateReport(matchedOrder, ExecutionStatus::PFILL));
+            reports.push_back(generateReport(matchedOrder, ExecutionStatus::PFILL, "", -1.0, matchQty));
         }
 
         // Remove empty price level
@@ -163,10 +163,20 @@ std::vector<ExecutionReportPtr> OrderBook::processSellOrder(OrderPtr incoming) {
 ExecutionReportPtr OrderBook::generateReport(const OrderPtr& order,
                                              ExecutionStatus status,
                                              const std::string& reason,
-                                             double executionPrice) {
-    // For NEW orders, show original quantity; for FILL/PFILL, show filled quantity
-    int reportQty = (status == ExecutionStatus::NEW) ? order->getQuantity() 
-                    : (order->getQuantity() - order->getRemainingQuantity());
+                                             double executionPrice,
+                                             int fillQtyThisMatch) {
+    // Use provided fill quantity for this match, or calculate cumulative
+    int reportQty;
+    if (fillQtyThisMatch >= 0) {
+        // Specific match quantity provided
+        reportQty = fillQtyThisMatch;
+    } else if (status == ExecutionStatus::NEW) {
+        // For NEW orders, show original quantity
+        reportQty = order->getQuantity();
+    } else {
+        // For FILL/PFILL without specific match qty, show cumulative filled
+        reportQty = order->getQuantity() - order->getRemainingQuantity();
+    }
     
     // Use provided execution price, or fall back to order's price
     double reportPrice = (executionPrice >= 0) ? executionPrice : order->getPrice();
