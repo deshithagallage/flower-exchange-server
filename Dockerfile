@@ -3,6 +3,7 @@ FROM ubuntu:22.04 AS builder
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y \
+    ca-certificates \
     cmake \
     g++ \
     git \
@@ -51,6 +52,12 @@ COPY --from=builder /usr/local/include /usr/local/include
 # Copy compiled application from builder
 WORKDIR /app
 COPY --from=builder /app/build/flower-exchange-app .
+
+# Create data directory for CSV reports
+RUN mkdir -p /data && chmod 777 /data
+
+# Set environment variable for data directory
+ENV DATA_DIR=/data
 
 # Update library cache
 RUN ldconfig 2>&1 || true
