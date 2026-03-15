@@ -3,6 +3,7 @@ FROM ubuntu:22.04 AS builder
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
     cmake \
     g++ \
     git \
