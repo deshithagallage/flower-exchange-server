@@ -52,8 +52,8 @@ COPY --from=builder /usr/local/include /usr/local/include
 WORKDIR /app
 COPY --from=builder /app/build/flower-exchange-app .
 
-# Create data directory for CSV reports (optional - CSV will write to /app)
-RUN mkdir -p /app/data
+# Create directory for CSV reports (separate from /app to avoid volume override)
+RUN mkdir -p /data
 
 # Update library cache
 RUN ldconfig 2>&1 || true
@@ -65,5 +65,5 @@ EXPOSE 5555
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD timeout 5 bash -c 'exec 3<>/dev/tcp/127.0.0.1/5555' || exit 1
 
-# Run from /app where the executable is
+# Run from /app where the executable is located
 CMD ["./flower-exchange-app"]

@@ -12,7 +12,7 @@ std::vector<ExecutionReportPtr> OrderService::submitOrder(const OrderPtr& order)
     auto reports = exchange_->processOrder(order);
     
     // Persist reports to CSV
-    CSVWriter::writeReportsToFile("execution_reports.csv", reports);
+    CSVWriter::writeReportsToFile("/data/execution_reports.csv", reports);
     
     return reports;
 }
