@@ -55,9 +55,6 @@ COPY --from=builder /app/build/flower-exchange-app .
 # Create data directory for CSV reports
 RUN mkdir -p /app/data
 
-# Define volume for persistent storage
-VOLUME ["/app/data"]
-
 # Update library cache
 RUN ldconfig 2>&1 || true
 
