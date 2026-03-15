@@ -20,6 +20,11 @@ public:
 
     std::vector<OrderPtr> getSellOrders(Instrument instrument) const;
 
+    // Get buy/sell orders across all instruments
+    std::vector<OrderPtr> getAllBuyOrders() const;
+
+    std::vector<OrderPtr> getAllSellOrders() const;
+
     // Bulk operations
     int submitBulkOrders(const std::string& csvContent);
 

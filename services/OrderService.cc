@@ -60,6 +60,32 @@ std::vector<OrderPtr> OrderService::getSellOrders(Instrument instrument) const {
     return exchange_->getOrderBook(instrument).getAllSellOrders();
 }
 
+std::vector<OrderPtr> OrderService::getAllBuyOrders() const {
+    if (!exchange_) {
+        return {};
+    }
+    std::vector<OrderPtr> allBuyOrders;
+    for (Instrument inst : {Instrument::ROSE, Instrument::TULIP, Instrument::LILIES, 
+                             Instrument::SUNFLOWER, Instrument::DAISY}) {
+        auto buyOrders = exchange_->getOrderBook(inst).getAllBuyOrders();
+        allBuyOrders.insert(allBuyOrders.end(), buyOrders.begin(), buyOrders.end());
+    }
+    return allBuyOrders;
+}
+
+std::vector<OrderPtr> OrderService::getAllSellOrders() const {
+    if (!exchange_) {
+        return {};
+    }
+    std::vector<OrderPtr> allSellOrders;
+    for (Instrument inst : {Instrument::ROSE, Instrument::TULIP, Instrument::LILIES, 
+                             Instrument::SUNFLOWER, Instrument::DAISY}) {
+        auto sellOrders = exchange_->getOrderBook(inst).getAllSellOrders();
+        allSellOrders.insert(allSellOrders.end(), sellOrders.begin(), sellOrders.end());
+    }
+    return allSellOrders;
+}
+
 const std::shared_ptr<Exchange>& OrderService::getExchange() const {
     return exchange_;
 }

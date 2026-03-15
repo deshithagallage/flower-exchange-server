@@ -258,28 +258,32 @@ void OrderCtrl::getOrdersByInstrument(const HttpRequestPtr& req,
 void OrderCtrl::getBuyOrders(const HttpRequestPtr& req,
                             std::function<void(const HttpResponsePtr&)>&& callback) {
     try {
-        std::string instrumentStr = req->getParameter("instrument");
-        if (instrumentStr.empty()) {
-            auto resp = HttpResponse::newHttpResponse();
-            resp->setStatusCode(HttpStatusCode::k400BadRequest);
-            resp->setContentTypeCode(CT_APPLICATION_JSON);
-            resp->setBody("{\"status\":\"error\",\"message\":\"instrument parameter required\"}");
-            callback(resp);
-            return;
-        }
+        std::string instrumentParam = req->getParameter("instrument");
+        std::vector<OrderPtr> orders;
 
-        Instrument instrument = strToInstrument(instrumentStr);
-        auto orders = orderService_->getBuyOrders(instrument);
+        if (instrumentParam.empty()) {
+            // Get all buy orders across all instruments
+            orders = orderService_->getAllBuyOrders();
+        } else {
+            // Get buy orders for specific instrument
+            Instrument instrument = strToInstrument(instrumentParam);
+            orders = orderService_->getBuyOrders(instrument);
+        }
 
         Json::Value responseJson;
         responseJson["status"] = "success";
-        responseJson["instrument"] = instrumentStr;
+        if (!instrumentParam.empty()) {
+            responseJson["instrument"] = instrumentParam;
+        } else {
+            responseJson["instrument"] = "ALL";
+        }
         responseJson["side"] = "BUY";
         responseJson["orders"] = Json::arrayValue;
 
         for (const auto& order : orders) {
             Json::Value orderJson;
             orderJson["clientOrderId"] = order->getClientOrderId();
+            orderJson["instrument"] = instrumentStr(order->getInstrument());
             orderJson["price"] = order->getPrice();
             orderJson["quantity"] = order->getQuantity();
             orderJson["filledQuantity"] = order->getQuantity() - order->getRemainingQuantity();
@@ -307,28 +311,32 @@ void OrderCtrl::getBuyOrders(const HttpRequestPtr& req,
 void OrderCtrl::getSellOrders(const HttpRequestPtr& req,
                              std::function<void(const HttpResponsePtr&)>&& callback) {
     try {
-        std::string instrumentStr = req->getParameter("instrument");
-        if (instrumentStr.empty()) {
-            auto resp = HttpResponse::newHttpResponse();
-            resp->setStatusCode(HttpStatusCode::k400BadRequest);
-            resp->setContentTypeCode(CT_APPLICATION_JSON);
-            resp->setBody("{\"status\":\"error\",\"message\":\"instrument parameter required\"}");
-            callback(resp);
-            return;
-        }
+        std::string instrumentParam = req->getParameter("instrument");
+        std::vector<OrderPtr> orders;
 
-        Instrument instrument = strToInstrument(instrumentStr);
-        auto orders = orderService_->getSellOrders(instrument);
+        if (instrumentParam.empty()) {
+            // Get all sell orders across all instruments
+            orders = orderService_->getAllSellOrders();
+        } else {
+            // Get sell orders for specific instrument
+            Instrument instrument = strToInstrument(instrumentParam);
+            orders = orderService_->getSellOrders(instrument);
+        }
 
         Json::Value responseJson;
         responseJson["status"] = "success";
-        responseJson["instrument"] = instrumentStr;
+        if (!instrumentParam.empty()) {
+            responseJson["instrument"] = instrumentParam;
+        } else {
+            responseJson["instrument"] = "ALL";
+        }
         responseJson["side"] = "SELL";
         responseJson["orders"] = Json::arrayValue;
 
         for (const auto& order : orders) {
             Json::Value orderJson;
             orderJson["clientOrderId"] = order->getClientOrderId();
+            orderJson["instrument"] = instrumentStr(order->getInstrument());
             orderJson["price"] = order->getPrice();
             orderJson["quantity"] = order->getQuantity();
             orderJson["filledQuantity"] = order->getQuantity() - order->getRemainingQuantity();
