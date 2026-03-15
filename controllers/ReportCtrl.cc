@@ -5,7 +5,9 @@ namespace flower_exchange {
 
 void ReportCtrl::downloadReports(const HttpRequestPtr& req,
                                 std::function<void(const HttpResponsePtr&)>&& callback) {
-    std::ifstream file("/data/execution_reports.csv");
+    const char* dataDir = std::getenv("DATA_DIR");
+    std::string reportPath = (dataDir ? std::string(dataDir) : "./data") + "/execution_reports.csv";
+    std::ifstream file(reportPath);
     if (!file.is_open()) {
         auto resp = HttpResponse::newHttpResponse();
         resp->setStatusCode(HttpStatusCode::k404NotFound);

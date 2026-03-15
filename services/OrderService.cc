@@ -1,6 +1,21 @@
 #include "OrderService.h"
+#include <cstdlib>
+#include <filesystem>
 
 namespace flower_exchange {
+
+static std::string getDataDir() {
+    const char* dataDir = std::getenv("DATA_DIR");
+    if (dataDir) {
+        return std::string(dataDir);
+    }
+    return "./data";
+}
+
+static void ensureDataDirExists() {
+    std::string dataDir = getDataDir();
+    std::filesystem::create_directories(dataDir);
+}
 
 OrderService::OrderService(const std::shared_ptr<Exchange>& exchange)
     : exchange_(exchange) {}
@@ -12,7 +27,9 @@ std::vector<ExecutionReportPtr> OrderService::submitOrder(const OrderPtr& order)
     auto reports = exchange_->processOrder(order);
     
     // Persist reports to CSV
-    CSVWriter::writeReportsToFile("/data/execution_reports.csv", reports);
+    ensureDataDirExists();
+    std::string reportPath = getDataDir() + "/execution_reports.csv";
+    CSVWriter::writeReportsToFile(reportPath, reports);
     
     return reports;
 }

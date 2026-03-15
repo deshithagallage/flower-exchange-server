@@ -53,6 +53,12 @@ COPY --from=builder /usr/local/include /usr/local/include
 WORKDIR /app
 COPY --from=builder /app/build/flower-exchange-app .
 
+# Create data directory for CSV reports
+RUN mkdir -p /data && chmod 777 /data
+
+# Set environment variable for data directory
+ENV DATA_DIR=/data
+
 # Update library cache
 RUN ldconfig 2>&1 || true
 
