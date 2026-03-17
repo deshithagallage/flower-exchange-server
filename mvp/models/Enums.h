@@ -1,5 +1,8 @@
 #pragma once
 
+#include <string>
+#include <stdexcept>
+
 namespace flower_exchange {
 
 /**
@@ -98,6 +101,63 @@ namespace converter {
             case ExecutionStatus::REJECTED: return "REJECTED";
             default:                        return "UNKNOWN";
         }
+    }
+
+    // ==================== STRING TO ENUM CONVERTERS ====================
+
+    /**
+     * Convert string to Instrument enum
+     * @param str String representation
+     * @return Instrument enum value
+     * @throws std::invalid_argument if string is not recognized
+     */
+    inline Instrument strToInstrument(const std::string& str) {
+        if (str == "ROSE")      return Instrument::ROSE;
+        if (str == "TULIP")     return Instrument::TULIP;
+        if (str == "LILIES")    return Instrument::LILIES;
+        if (str == "SUNFLOWER") return Instrument::SUNFLOWER;
+        if (str == "DAISY")     return Instrument::DAISY;
+        throw std::invalid_argument("Unknown instrument: " + str);
+    }
+
+    /**
+     * Convert string to Side enum
+     * @param str String representation
+     * @return Side enum value
+     * @throws std::invalid_argument if string is not recognized
+     */
+    inline Side strToSide(const std::string& str) {
+        if (str == "BUY")  return Side::BUY;
+        if (str == "SELL") return Side::SELL;
+        throw std::invalid_argument("Unknown side: " + str);
+    }
+
+    /**
+     * Convert string to ExecutionStatus enum
+     * @param str String representation
+     * @return ExecutionStatus enum value
+     * @throws std::invalid_argument if string is not recognized
+     */
+    inline ExecutionStatus strToExecutionStatus(const std::string& str) {
+        if (str == "QUEUED")   return ExecutionStatus::QUEUED;
+        if (str == "FILLED")   return ExecutionStatus::FILLED;
+        if (str == "REJECTED") return ExecutionStatus::REJECTED;
+        throw std::invalid_argument("Unknown execution status: " + str);
+    }
+
+    /**
+     * Convert string to OrderStatus enum
+     * @param str String representation
+     * @return OrderStatus enum value
+     * @throws std::invalid_argument if string is not recognized
+     */
+    inline OrderStatus strToOrderStatus(const std::string& str) {
+        if (str == "PENDING")           return OrderStatus::PENDING;
+        if (str == "QUEUED")            return OrderStatus::QUEUED;
+        if (str == "REJECTED")          return OrderStatus::REJECTED;
+        if (str == "PARTIALLY_FILLED")  return OrderStatus::PARTIALLY_FILLED;
+        if (str == "FILLED")            return OrderStatus::FILLED;
+        throw std::invalid_argument("Unknown order status: " + str);
     }
 }
 
