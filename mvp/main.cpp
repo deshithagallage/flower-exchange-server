@@ -14,14 +14,18 @@ int main(int argc, char* argv[]) {
     if (argc != 3) {
         std::cerr << "Usage: flower-exchange <input.csv> <output.csv>\n";
         std::cerr << "\n";
-        std::cerr << "  Input:  CSV file with columns:\n";
-        std::cerr << "          CLIENT_ID,ORDER_ID,INSTRUMENT,SIDE,PRICE,QUANTITY\n";
+        std::cerr << "  Input:  CSV file (typically 'orders.csv') with columns:\n";
+        std::cerr << "          Client Order ID, Instrument, Side, Quantity, Price\n";
+        std::cerr << "          Side: 1=BUY, 2=SELL\n";
+        std::cerr << "          Instruments: Rose, Tulip, Lilies, Sunflower, Daisy\n";
         std::cerr << "\n";
-        std::cerr << "  Output: CSV file with execution reports:\n";
-        std::cerr << "          EXCHANGE_ORDER_ID,INSTRUMENT,SIDE,STATUS,FILLED_QUANTITY,EXECUTION_PRICE,REASON\n";
+        std::cerr << "  Output: CSV file (typically 'execution_rep.csv') with execution reports:\n";
+        std::cerr << "          Order ID, Client Order ID, Instrument, Side, Exec Status, Quantity, Price\n";
+        std::cerr << "          Side: 1=BUY, 2=SELL\n";
+        std::cerr << "          Status: New, Fill, Rejected\n";
         std::cerr << "\n";
         std::cerr << "  Example:\n";
-        std::cerr << "          flower-exchange orders.csv execution_reports.csv\n";
+        std::cerr << "          flower-exchange orders.csv execution_rep.csv\n";
         return 1;
     }
 
@@ -86,17 +90,19 @@ int main(int argc, char* argv[]) {
         std::cout << "═══════════════════════════════════════\n\n";
 
         // Count reports by status
-        int queued = 0, filled = 0, rejected = 0;
+        int queued = 0, filled = 0, partial_filled = 0, rejected = 0;
         for (const auto& report : all_reports) {
             if (report->getStatus() == ExecutionStatus::QUEUED) queued++;
             else if (report->getStatus() == ExecutionStatus::FILLED) filled++;
+            else if (report->getStatus() == ExecutionStatus::PARTIAL_FILLED) partial_filled++;
             else if (report->getStatus() == ExecutionStatus::REJECTED) rejected++;
         }
 
         std::cout << "Report breakdown:\n";
-        std::cout << "  QUEUED:   " << queued << "\n";
-        std::cout << "  FILLED:   " << filled << "\n";
-        std::cout << "  REJECTED: " << rejected << "\n";
+        std::cout << "  New:      " << queued << "  (added to order book)\n";
+        std::cout << "  Pfill:    " << partial_filled << "  (partially filled)\n";
+        std::cout << "  Fill:     " << filled << "  (fully executed)\n";
+        std::cout << "  Rejected: " << rejected << "  (validation failed)\n";
         std::cout << "\nSuccess! ✓\n";
 
         return 0;

@@ -26,6 +26,7 @@ std::vector<ExecutionReportPtr> OrderBook::processBuyOrder(OrderPtr incoming) {
     
     incoming->setStatus(OrderStatus::QUEUED);
     int remaining_qty = incoming->getRemainingQuantity();
+    int initial_qty = remaining_qty;
 
     // Iterate through all sell price levels (ascending = best first)
     for (auto it = sell_levels_.begin(); it != sell_levels_.end(); ) {
@@ -46,14 +47,30 @@ std::vector<ExecutionReportPtr> OrderBook::processBuyOrder(OrderPtr incoming) {
             sell_order->reduceQuantity(fill_qty);
             remaining_qty -= fill_qty;
 
-            auto report = generateReport(
+            // Determine status based on whether this is partial or full fill
+            ExecutionStatus incoming_status = (remaining_qty > 0) ? 
+                ExecutionStatus::PARTIAL_FILLED : ExecutionStatus::FILLED;
+
+            // Generate report for the INCOMING BUY order
+            auto buy_report = generateReport(
                 incoming,
+                incoming_status,
+                "",
+                sell_price,
+                fill_qty
+            );
+            reports.push_back(buy_report);
+
+            // Generate report for the MATCHED SELL order
+            // Sell order gets FILLED since it will be removed from queue
+            auto sell_report = generateReport(
+                sell_order,
                 ExecutionStatus::FILLED,
                 "",
                 sell_price,
                 fill_qty
             );
-            reports.push_back(report);
+            reports.push_back(sell_report);
 
             if (sell_order->isFilled()) {
                 sell_queue.pop_front();
@@ -74,12 +91,16 @@ std::vector<ExecutionReportPtr> OrderBook::processBuyOrder(OrderPtr incoming) {
         );
         addBuyOrder(incoming);
 
-        auto queue_report = generateReport(
-            incoming,
-            ExecutionStatus::QUEUED,
-            "Added to order book"
-        );
-        reports.push_back(queue_report);
+        // Only generate QUEUED report if NO partial fills occurred
+        // (i.e., order was never matched)
+        if (initial_qty == remaining_qty) {
+            auto queue_report = generateReport(
+                incoming,
+                ExecutionStatus::QUEUED,
+                "Added to order book"
+            );
+            reports.push_back(queue_report);
+        }
     } else {
         incoming->setStatus(OrderStatus::FILLED);
     }
@@ -94,6 +115,7 @@ std::vector<ExecutionReportPtr> OrderBook::processSellOrder(OrderPtr incoming) {
     
     incoming->setStatus(OrderStatus::QUEUED);
     int remaining_qty = incoming->getRemainingQuantity();
+    int initial_qty = remaining_qty;
 
     for (auto it = buy_levels_.begin(); it != buy_levels_.end(); ) {
         double buy_price = it->first;
@@ -113,14 +135,29 @@ std::vector<ExecutionReportPtr> OrderBook::processSellOrder(OrderPtr incoming) {
             buy_order->reduceQuantity(fill_qty);
             remaining_qty -= fill_qty;
 
-            auto report = generateReport(
+            // Determine status based on whether this is partial or full fill
+            ExecutionStatus incoming_status = (remaining_qty > 0) ? 
+                ExecutionStatus::PARTIAL_FILLED : ExecutionStatus::FILLED;
+
+            // Generate report for the INCOMING SELL order
+            auto sell_report = generateReport(
                 incoming,
+                incoming_status,
+                "",
+                buy_price,
+                fill_qty
+            );
+            reports.push_back(sell_report);
+
+            // Generate report for the MATCHED BUY order
+            auto buy_report = generateReport(
+                buy_order,
                 ExecutionStatus::FILLED,
                 "",
                 buy_price,
                 fill_qty
             );
-            reports.push_back(report);
+            reports.push_back(buy_report);
 
             if (buy_order->isFilled()) {
                 buy_queue.pop_front();
@@ -141,12 +178,16 @@ std::vector<ExecutionReportPtr> OrderBook::processSellOrder(OrderPtr incoming) {
         );
         addSellOrder(incoming);
 
-        auto queue_report = generateReport(
-            incoming,
-            ExecutionStatus::QUEUED,
-            "Added to order book"
-        );
-        reports.push_back(queue_report);
+        // Only generate QUEUED report if NO partial fills occurred
+        // (i.e., order was never matched)
+        if (initial_qty == remaining_qty) {
+            auto queue_report = generateReport(
+                incoming,
+                ExecutionStatus::QUEUED,
+                "Added to order book"
+            );
+            reports.push_back(queue_report);
+        }
     } else {
         incoming->setStatus(OrderStatus::FILLED);
     }
@@ -206,9 +247,12 @@ ExecutionReportPtr OrderBook::generateReport(
     
     auto report = std::make_shared<ExecutionReport>(
         order->getExchangeOrderId(),
+        order->getClientOrderId(),
         order->getInstrument(),
         order->getSide(),
         status,
+        order->getQuantity(),
+        order->getPrice(),
         fill_qty_this_match > 0 ? fill_qty_this_match : 0,
         execution_price > 0 ? execution_price : 0.0,
         reason

@@ -2,18 +2,20 @@
 
 #include <string>
 #include <stdexcept>
+#include <cctype>
 
 namespace flower_exchange {
 
 /**
  * Represents the type of flower being traded
+ * Valid instruments: Rose, Lavender, Lotus, Tulip, Orchid
  */
 enum class Instrument {
     ROSE = 0,
-    TULIP = 1,
-    LILIES = 2,
-    SUNFLOWER = 3,
-    DAISY = 4
+    LAVENDER = 1,
+    LOTUS = 2,
+    TULIP = 3,
+    ORCHID = 4
 };
 
 /**
@@ -39,9 +41,10 @@ enum class OrderStatus {
  * Represents the execution status of a trade
  */
 enum class ExecutionStatus {
-    QUEUED = 0,      // Order added to book, no match
-    FILLED = 1,      // Order matched, quantity filled
-    REJECTED = 2     // Order rejected
+    QUEUED = 0,           // Order added to book, no match
+    FILLED = 1,           // Order matched, quantity filled completely
+    REJECTED = 2,         // Order rejected
+    PARTIAL_FILLED = 3    // Order partially filled (some quantity matched, remainder in book)
 };
 
 /**
@@ -55,11 +58,11 @@ namespace converter {
      */
     inline const char* instrumentToString(Instrument inst) {
         switch (inst) {
-            case Instrument::ROSE:      return "ROSE";
-            case Instrument::TULIP:     return "TULIP";
-            case Instrument::LILIES:    return "LILIES";
-            case Instrument::SUNFLOWER: return "SUNFLOWER";
-            case Instrument::DAISY:     return "DAISY";
+            case Instrument::ROSE:      return "Rose";
+            case Instrument::LAVENDER:  return "Lavender";
+            case Instrument::LOTUS:     return "Lotus";
+            case Instrument::TULIP:     return "Tulip";
+            case Instrument::ORCHID:    return "Orchid";
             default:                    return "UNKNOWN";
         }
     }
@@ -71,6 +74,15 @@ namespace converter {
      */
     inline const char* sideToString(Side side) {
         return side == Side::BUY ? "BUY" : "SELL";
+    }
+
+    /**
+     * Convert Side enum to numeric value (1=BUY, 2=SELL)
+     * @param side Side enum value
+     * @return Numeric representation
+     */
+    inline int sideToNumeric(Side side) {
+        return side == Side::BUY ? 1 : 2;
     }
 
     /**
@@ -103,20 +115,39 @@ namespace converter {
         }
     }
 
+    /**
+     * Convert ExecutionStatus enum to short CSV format (New, Fill, Rejected, Pfill)
+     * @param status ExecutionStatus enum value
+     * @return Short string representation
+     */
+    inline const char* executionStatusToCSV(ExecutionStatus status) {
+        switch (status) {
+            case ExecutionStatus::QUEUED:           return "New";        // Added to order book
+            case ExecutionStatus::FILLED:           return "Fill";       // Fully matched
+            case ExecutionStatus::PARTIAL_FILLED:   return "Pfill";      // Partially matched
+            case ExecutionStatus::REJECTED:         return "Rejected";   // Validation failed
+            default:                                return "UNKNOWN";
+        }
+    }
+
     // ==================== STRING TO ENUM CONVERTERS ====================
 
     /**
-     * Convert string to Instrument enum
-     * @param str String representation
+     * Convert string to Instrument enum (case-insensitive)
+     * @param str String representation (e.g., "Rose", "ROSE", "rose")
      * @return Instrument enum value
      * @throws std::invalid_argument if string is not recognized
      */
     inline Instrument strToInstrument(const std::string& str) {
-        if (str == "ROSE")      return Instrument::ROSE;
-        if (str == "TULIP")     return Instrument::TULIP;
-        if (str == "LILIES")    return Instrument::LILIES;
-        if (str == "SUNFLOWER") return Instrument::SUNFLOWER;
-        if (str == "DAISY")     return Instrument::DAISY;
+        // Case-insensitive comparison
+        std::string lower_str = str;
+        for (auto& c : lower_str) c = std::tolower(c);
+        
+        if (lower_str == "rose")      return Instrument::ROSE;
+        if (lower_str == "lavender")  return Instrument::LAVENDER;
+        if (lower_str == "lotus")     return Instrument::LOTUS;
+        if (lower_str == "tulip")     return Instrument::TULIP;
+        if (lower_str == "orchid")    return Instrument::ORCHID;
         throw std::invalid_argument("Unknown instrument: " + str);
     }
 
@@ -130,6 +161,18 @@ namespace converter {
         if (str == "BUY")  return Side::BUY;
         if (str == "SELL") return Side::SELL;
         throw std::invalid_argument("Unknown side: " + str);
+    }
+
+    /**
+     * Convert numeric value to Side enum (1=BUY, 2=SELL)
+     * @param num Numeric side value
+     * @return Side enum value
+     * @throws std::invalid_argument if num is not 1 or 2
+     */
+    inline Side numericToSide(int num) {
+        if (num == 1) return Side::BUY;
+        if (num == 2) return Side::SELL;
+        throw std::invalid_argument("Side must be 1 (BUY) or 2 (SELL), got " + std::to_string(num));
     }
 
     /**

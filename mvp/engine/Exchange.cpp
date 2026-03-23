@@ -8,10 +8,10 @@ namespace flower_exchange {
 
 Exchange::Exchange() {
     order_books_.emplace(Instrument::ROSE, OrderBook(Instrument::ROSE));
+    order_books_.emplace(Instrument::LAVENDER, OrderBook(Instrument::LAVENDER));
+    order_books_.emplace(Instrument::LOTUS, OrderBook(Instrument::LOTUS));
     order_books_.emplace(Instrument::TULIP, OrderBook(Instrument::TULIP));
-    order_books_.emplace(Instrument::LILIES, OrderBook(Instrument::LILIES));
-    order_books_.emplace(Instrument::SUNFLOWER, OrderBook(Instrument::SUNFLOWER));
-    order_books_.emplace(Instrument::DAISY, OrderBook(Instrument::DAISY));
+    order_books_.emplace(Instrument::ORCHID, OrderBook(Instrument::ORCHID));
 }
 
 // ==================== MAIN ENTRY POINT ====================
@@ -23,12 +23,19 @@ std::vector<ExecutionReportPtr> Exchange::processOrder(OrderPtr order) {
         throw std::invalid_argument("Order cannot be null");
     }
 
+    // Generate exchange order ID first (even for rejected orders)
+    std::string exchange_order_id = generateExchangeOrderId();
+    order->setExchangeOrderId(exchange_order_id);
+
     if (!validator_.isValid(order)) {
         auto report = std::make_shared<ExecutionReport>(
-            "",
+            exchange_order_id,
+            order->getClientOrderId(),
             order->getInstrument(),
             order->getSide(),
             ExecutionStatus::REJECTED,
+            order->getQuantity(),
+            order->getPrice(),
             0,
             0.0,
             validator_.getLastError()
@@ -37,9 +44,6 @@ std::vector<ExecutionReportPtr> Exchange::processOrder(OrderPtr order) {
         order->setStatus(OrderStatus::REJECTED);
         return reports;
     }
-
-    std::string exchange_order_id = generateExchangeOrderId();
-    order->setExchangeOrderId(exchange_order_id);
 
     assignDefaultClient(order);
 
@@ -63,7 +67,7 @@ std::string Exchange::generateExchangeOrderId() {
     int next_id = next_exchange_order_id_.fetch_add(1);
     
     std::ostringstream oss;
-    oss << "EXO_" << next_id;
+    oss << "ord" << next_id;  // Changed from "EXO_" to "ord"
     return oss.str();
 }
 

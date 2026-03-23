@@ -5,6 +5,8 @@
 namespace flower_exchange {
 using converter::instrumentToString;
 using converter::sideToString;
+using converter::sideToNumeric;
+using converter::executionStatusToCSV;
 using converter::executionStatusToString;
 
 void CSVWriter::writeOrders(
@@ -17,17 +19,16 @@ void CSVWriter::writeOrders(
         throw std::runtime_error("Cannot open file for writing: " + filename);
     }
 
-    // Write header
-    writeHeader(file, "CLIENT_ID,ORDER_ID,INSTRUMENT,SIDE,PRICE,QUANTITY");
+    // Write header: Client Order ID, Instrument, Side, Quantity, Price
+    writeHeader(file, "Client Order ID,Instrument,Side,Quantity,Price");
 
     // Write data rows
     for (const auto& order : orders) {
-        file << order->getClientId() << ","
-             << order->getClientOrderId() << ","
+        file << order->getClientOrderId() << ","
              << instrumentToString(order->getInstrument()) << ","
-             << sideToString(order->getSide()) << ","
-             << std::fixed << std::setprecision(2) << order->getPrice() << ","
-             << order->getQuantity() << "\n";
+             << sideToNumeric(order->getSide()) << ","
+             << order->getQuantity() << ","
+             << std::fixed << std::setprecision(2) << order->getPrice() << "\n";
     }
 
     file.close();
@@ -43,19 +44,29 @@ void CSVWriter::writeExecutionReports(
         throw std::runtime_error("Cannot open file for writing: " + filename);
     }
 
-    // Write header
+    // Write header: Order ID,Client Order ID,Instrument,Side,Exec Status,Quantity,Price
     writeHeader(file, 
-        "EXCHANGE_ORDER_ID,INSTRUMENT,SIDE,STATUS,FILLED_QUANTITY,EXECUTION_PRICE,REASON");
+        "Order ID,Client Order ID,Instrument,Side,Exec Status,Quantity,Price");
 
     // Write data rows
     for (const auto& report : reports) {
+        // For FILLED/PARTIAL_FILLED: show filled quantity, otherwise show order quantity
+        double qty_to_show = report->getOrderQuantity();
+        double price_to_show = report->getOrderPrice();
+        
+        if (report->getStatus() == ExecutionStatus::FILLED || 
+            report->getStatus() == ExecutionStatus::PARTIAL_FILLED) {
+            qty_to_show = report->getFilledQuantity();
+            price_to_show = report->getExecutionPrice();
+        }
+        
         file << report->getExchangeOrderId() << ","
+             << report->getClientOrderId() << ","
              << instrumentToString(report->getInstrument()) << ","
-             << sideToString(report->getSide()) << ","
-             << executionStatusToString(report->getStatus()) << ","
-             << report->getFilledQuantity() << ","
-             << std::fixed << std::setprecision(2) << report->getExecutionPrice() << ","
-             << report->getReason() << "\n";
+             << sideToNumeric(report->getSide()) << ","
+             << executionStatusToCSV(report->getStatus()) << ","
+             << qty_to_show << ","
+             << std::fixed << std::setprecision(2) << price_to_show << "\n";
     }
 
     file.close();

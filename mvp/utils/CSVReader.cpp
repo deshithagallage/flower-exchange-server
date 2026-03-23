@@ -5,6 +5,7 @@
 namespace flower_exchange {
 using converter::strToInstrument;
 using converter::strToSide;
+using converter::numericToSide;
 using converter::strToExecutionStatus;
 
 std::vector<OrderPtr> CSVReader::readOrders(const std::string& filename) const {
@@ -17,13 +18,14 @@ std::vector<OrderPtr> CSVReader::readOrders(const std::string& filename) const {
 
     std::string line;
     int line_number = 0;
+    int order_counter = 0;
 
     // Read and validate header
     if (!std::getline(file, line)) {
         throw std::runtime_error("File is empty: " + filename);
     }
     line_number++;
-    validateHeader(line, 6);  // 6 columns expected
+    validateHeader(line, 5);  // 5 columns expected: Client Order ID, Instrument, Side, Quantity, Price
 
     // Read data lines
     while (std::getline(file, line)) {
@@ -35,7 +37,43 @@ std::vector<OrderPtr> CSVReader::readOrders(const std::string& filename) const {
         }
 
         try {
-            auto order = parseOrderLine(line, line_number);
+            auto parts = split(line, ",");
+
+            if (parts.size() != 5) {
+                throw std::invalid_argument(
+                    "Expected 5 columns, got " + std::to_string(parts.size()) +
+                    "\n  Expected format: Client Order ID, Instrument, Side, Quantity, Price"
+                );
+            }
+
+            // Parse each field
+            std::string client_order_id = trim(parts[0]);
+            std::string instrument_str = trim(parts[1]);
+            int side_numeric = stringToInt(trim(parts[2]));
+            int quantity = stringToInt(trim(parts[3]));
+            double price = stringToDouble(trim(parts[4]));
+
+            // Convert strings to enums
+            Instrument inst = strToInstrument(instrument_str);
+            Side side = numericToSide(side_numeric);
+
+            // Generate exchange order ID (ordN format)
+            order_counter++;
+            std::string exchange_order_id = "ord" + std::to_string(order_counter);
+
+            // Create order with client_order_id as both client_id and client_order_id
+            auto order = std::make_shared<Order>(
+                client_order_id,      // client_id (using client's ID)
+                client_order_id,      // client_order_id (same as above)
+                inst,
+                side,
+                price,
+                quantity
+            );
+
+            // Set the exchange order ID
+            order->setExchangeOrderId(exchange_order_id);
+
             orders.push_back(order);
         } catch (const std::exception& e) {
             throw std::invalid_argument(
@@ -67,7 +105,7 @@ std::vector<ExecutionReportPtr> CSVReader::readExecutionReports(
         throw std::runtime_error("File is empty: " + filename);
     }
     line_number++;
-    validateHeader(line, 7);  // 7 columns expected
+    validateHeader(line, 7);  // 7 columns expected: Order ID,Client Order ID,Instrument,Side,Exec Status,Quantity,Price
 
     // Read data lines
     while (std::getline(file, line)) {
@@ -88,22 +126,44 @@ std::vector<ExecutionReportPtr> CSVReader::readExecutionReports(
             }
 
             // Parse each field
-            std::string exchange_id = trim(parts[0]);
-            std::string instrument_str = trim(parts[1]);
-            std::string side_str = trim(parts[2]);
-            std::string status_str = trim(parts[3]);
-            int filled_qty = stringToInt(trim(parts[4]));
-            double execution_price = stringToDouble(trim(parts[5]));
-            std::string reason = trim(parts[6]);
+            std::string order_id = trim(parts[0]);
+            std::string client_order_id = trim(parts[1]);
+            std::string instrument_str = trim(parts[2]);
+            int side_numeric = stringToInt(trim(parts[3]));
+            std::string status_str = trim(parts[4]);
+            int order_qty = stringToInt(trim(parts[5]));              // Order quantity (from CSV)
+            double order_price = stringToDouble(trim(parts[6]));     // Order price (from CSV)
 
-            // Convert strings to enums
+            // Convert strings/numbers to enums
             Instrument inst = strToInstrument(instrument_str);
-            Side side = strToSide(side_str);
-            ExecutionStatus status = strToExecutionStatus(status_str);
+            Side side = numericToSide(side_numeric);
+            
+            // Map CSV status names to ExecutionStatus
+            ExecutionStatus status;
+            std::string upper_status = status_str;
+            for (auto& c : upper_status) c = std::toupper(c);
+            
+            if (upper_status == "NEW") {
+                status = ExecutionStatus::QUEUED;
+            } else if (upper_status == "FILL") {
+                status = ExecutionStatus::FILLED;
+            } else if (upper_status == "REJECTED") {
+                status = ExecutionStatus::REJECTED;
+            } else {
+                throw std::invalid_argument("Unknown execution status: " + status_str);
+            }
 
             auto report = std::make_shared<ExecutionReport>(
-                exchange_id, inst, side, status,
-                filled_qty, execution_price, reason
+                order_id, 
+                client_order_id,
+                inst, 
+                side, 
+                status,
+                order_qty,
+                order_price,
+                0,              // filled_qty (not in this CSV format)
+                0.0,            // execution_price (not in this CSV format)
+                ""              // reason is empty when reading from CSV output
             );
 
             reports.push_back(report);
