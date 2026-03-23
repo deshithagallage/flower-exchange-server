@@ -6,7 +6,7 @@ namespace flower_exchange {
 using converter::instrumentToString;
 using converter::sideToString;
 using converter::sideToNumeric;
-using converter::executionStatusToCSV;
+using converter::executionStatusToCode;
 using converter::executionStatusToString;
 
 void CSVWriter::writeOrders(
@@ -44,9 +44,9 @@ void CSVWriter::writeExecutionReports(
         throw std::runtime_error("Cannot open file for writing: " + filename);
     }
 
-    // Write header: Order ID,Client Order ID,Instrument,Side,Exec Status,Quantity,Price,Transaction Time,Reason
+    // Write header: Order ID,Client Order ID,Instrument,Side,Status,Quantity,Price,Transaction Time,Reason
     writeHeader(file, 
-        "Order ID,Client Order ID,Instrument,Side,Exec Status,Quantity,Price,Transaction Time,Reason");
+        "Order ID,Client Order ID,Instrument,Side,Status,Quantity,Price,Transaction Time,Reason");
 
     // Write data rows
     for (const auto& report : reports) {
@@ -68,7 +68,7 @@ void CSVWriter::writeExecutionReports(
              << report->getClientOrderId() << ","
              << instrumentToString(report->getInstrument()) << ","
              << sideToNumeric(report->getSide()) << ","
-             << executionStatusToCSV(report->getStatus()) << ","
+             << converter::executionStatusToCode(report->getStatus()) << ","
              << qty_to_show << ","
              << std::fixed << std::setprecision(2) << price_to_show << ","
              << report->getTimestamp() << ","

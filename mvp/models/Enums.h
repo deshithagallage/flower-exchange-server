@@ -124,17 +124,21 @@ namespace converter {
     }
 
     /**
-     * Convert ExecutionStatus enum to short CSV format (New, Fill, Reject, Pfill)
+     * Convert ExecutionStatus enum to numeric code for CSV output
+     * 0 = New (QUEUED)
+     * 1 = Rejected (REJECTED)
+     * 2 = Fill (FILLED)
+     * 3 = Pfill (PARTIAL_FILLED)
      * @param status ExecutionStatus enum value
-     * @return Short string representation
+     * @return Numeric code
      */
-    inline const char* executionStatusToCSV(ExecutionStatus status) {
+    inline int executionStatusToCode(ExecutionStatus status) {
         switch (status) {
-            case ExecutionStatus::QUEUED:           return "New";        // Added to order book
-            case ExecutionStatus::FILLED:           return "Fill";       // Fully matched
-            case ExecutionStatus::PARTIAL_FILLED:   return "Pfill";      // Partially matched
-            case ExecutionStatus::REJECTED:         return "Reject";     // Validation failed
-            default:                                return "UNKNOWN";
+            case ExecutionStatus::QUEUED:           return 0;    // New
+            case ExecutionStatus::REJECTED:         return 1;    // Rejected
+            case ExecutionStatus::FILLED:           return 2;    // Fill
+            case ExecutionStatus::PARTIAL_FILLED:   return 3;    // Pfill
+            default:                                return -1;
         }
     }
 
