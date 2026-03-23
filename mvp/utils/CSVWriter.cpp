@@ -44,9 +44,9 @@ void CSVWriter::writeExecutionReports(
         throw std::runtime_error("Cannot open file for writing: " + filename);
     }
 
-    // Write header: Order ID,Client Order ID,Instrument,Side,Exec Status,Quantity,Price
+    // Write header: Order ID,Client Order ID,Instrument,Side,Exec Status,Quantity,Price,Transaction Time
     writeHeader(file, 
-        "Order ID,Client Order ID,Instrument,Side,Exec Status,Quantity,Price");
+        "Order ID,Client Order ID,Instrument,Side,Exec Status,Quantity,Price,Transaction Time");
 
     // Write data rows
     for (const auto& report : reports) {
@@ -66,7 +66,8 @@ void CSVWriter::writeExecutionReports(
              << sideToNumeric(report->getSide()) << ","
              << executionStatusToCSV(report->getStatus()) << ","
              << qty_to_show << ","
-             << std::fixed << std::setprecision(2) << price_to_show << "\n";
+             << std::fixed << std::setprecision(2) << price_to_show << ","
+             << report->getTimestamp() << "\n";
     }
 
     file.close();

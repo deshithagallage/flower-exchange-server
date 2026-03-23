@@ -255,7 +255,8 @@ ExecutionReportPtr OrderBook::generateReport(
         order->getPrice(),
         fill_qty_this_match > 0 ? fill_qty_this_match : 0,
         execution_price > 0 ? execution_price : 0.0,
-        reason
+        reason,
+        converter::getCurrentTimestamp()
     );
     
     return report;

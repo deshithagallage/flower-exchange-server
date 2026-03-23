@@ -38,7 +38,8 @@ std::vector<ExecutionReportPtr> Exchange::processOrder(OrderPtr order) {
             order->getPrice(),
             0,
             0.0,
-            validator_.getLastError()
+            validator_.getLastError(),
+            converter::getCurrentTimestamp()
         );
         reports.push_back(report);
         order->setStatus(OrderStatus::REJECTED);
