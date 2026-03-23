@@ -44,9 +44,9 @@ void CSVWriter::writeExecutionReports(
         throw std::runtime_error("Cannot open file for writing: " + filename);
     }
 
-    // Write header: Order ID,Client Order ID,Instrument,Side,Exec Status,Quantity,Price,Transaction Time
+    // Write header: Order ID,Client Order ID,Instrument,Side,Exec Status,Quantity,Price,Transaction Time,Reason
     writeHeader(file, 
-        "Order ID,Client Order ID,Instrument,Side,Exec Status,Quantity,Price,Transaction Time");
+        "Order ID,Client Order ID,Instrument,Side,Exec Status,Quantity,Price,Transaction Time,Reason");
 
     // Write data rows
     for (const auto& report : reports) {
@@ -60,6 +60,10 @@ void CSVWriter::writeExecutionReports(
             price_to_show = report->getExecutionPrice();
         }
         
+        // Only show reason for rejected orders
+        std::string reason = (report->getStatus() == ExecutionStatus::REJECTED) ? 
+            report->getReason() : "";
+        
         file << report->getExchangeOrderId() << ","
              << report->getClientOrderId() << ","
              << instrumentToString(report->getInstrument()) << ","
@@ -67,7 +71,8 @@ void CSVWriter::writeExecutionReports(
              << executionStatusToCSV(report->getStatus()) << ","
              << qty_to_show << ","
              << std::fixed << std::setprecision(2) << price_to_show << ","
-             << report->getTimestamp() << "\n";
+             << report->getTimestamp() << ","
+             << reason << "\n";
     }
 
     file.close();

@@ -31,13 +31,9 @@ Order::Order(const std::string& client_id,
         throw std::invalid_argument("Order ID cannot be empty");
     }
     
-    if (price <= 0.0) {
-        throw std::invalid_argument("Price must be greater than 0");
-    }
-    
-    if (quantity <= 0) {
-        throw std::invalid_argument("Quantity must be greater than 0");
-    }
+    // Price and quantity validation is done by OrderValidator, not here
+    // This allows orders with invalid values to be created and properly rejected
+    // with detailed validation error messages
 }
 
 } 

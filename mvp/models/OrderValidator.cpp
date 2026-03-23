@@ -32,23 +32,20 @@ bool OrderValidator::validateClientOrderId(const OrderPtr& order) {
     
     // Check if empty
     if (client_order_id.empty()) {
-        last_error_ = "Client Order ID cannot be empty";
+        last_error_ = "Invalid client order id";
         return false;
     }
     
     // Check max 7 characters
     if (client_order_id.length() > MAX_CLIENT_ORDER_ID_LENGTH) {
-        std::ostringstream oss;
-        oss << "Client Order ID too long (max " << MAX_CLIENT_ORDER_ID_LENGTH 
-            << " chars, got " << client_order_id.length() << ")";
-        last_error_ = oss.str();
+        last_error_ = "Invalid client order id";
         return false;
     }
     
     // Check alphanumeric only
     for (char c : client_order_id) {
         if (!std::isalnum(c)) {
-            last_error_ = "Client Order ID must be alphanumeric (letters and digits only)";
+            last_error_ = "Invalid client order id";
             return false;
         }
     }
@@ -60,16 +57,12 @@ bool OrderValidator::validatePrice(const OrderPtr& order) {
     double price = order->getPrice();
 
     if (price <= 0.0) {
-        std::ostringstream oss;
-        oss << "Price must be greater than 0.0 (got " << price << ")";
-        last_error_ = oss.str();
+        last_error_ = "Invalid price";
         return false;
     }
 
     if (price > MAX_PRICE) {
-        std::ostringstream oss;
-        oss << "Price too high (max " << MAX_PRICE << ")";
-        last_error_ = oss.str();
+        last_error_ = "Invalid price";
         return false;
     }
 
@@ -81,25 +74,19 @@ bool OrderValidator::validateQuantity(const OrderPtr& order) {
 
     // Check minimum
     if (qty < MIN_QUANTITY) {
-        std::ostringstream oss;
-        oss << "Quantity too low (min " << MIN_QUANTITY << ", got " << qty << ")";
-        last_error_ = oss.str();
+        last_error_ = "Invalid size";
         return false;
     }
 
     // Check maximum
     if (qty > MAX_QUANTITY) {
-        std::ostringstream oss;
-        oss << "Quantity too high (max " << MAX_QUANTITY << ", got " << qty << ")";
-        last_error_ = oss.str();
+        last_error_ = "Invalid size";
         return false;
     }
 
     // Check multiple of 10
     if (qty % QUANTITY_MULTIPLE != 0) {
-        std::ostringstream oss;
-        oss << "Quantity must be a multiple of 10 (got " << qty << ")";
-        last_error_ = oss.str();
+        last_error_ = "Invalid size";
         return false;
     }
 
@@ -134,7 +121,7 @@ bool OrderValidator::validateSide(const OrderPtr& order) {
         case Side::SELL:  // 2
             return true;
         default:
-            last_error_ = "Invalid side (must be 1=BUY or 2=SELL)";
+            last_error_ = "Invalid side";
             return false;
     }
 }

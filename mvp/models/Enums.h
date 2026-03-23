@@ -18,7 +18,8 @@ enum class Instrument {
     LAVENDER = 1,
     LOTUS = 2,
     TULIP = 3,
-    ORCHID = 4
+    ORCHID = 4,
+    INVALID = 5      // For invalid/unparseable instruments
 };
 
 /**
@@ -26,7 +27,8 @@ enum class Instrument {
  */
 enum class Side {
     BUY = 0,
-    SELL = 1
+    SELL = 1,
+    INVALID = 2    // For invalid/unparseable sides
 };
 
 /**
@@ -66,6 +68,7 @@ namespace converter {
             case Instrument::LOTUS:     return "Lotus";
             case Instrument::TULIP:     return "Tulip";
             case Instrument::ORCHID:    return "Orchid";
+            case Instrument::INVALID:   return "";
             default:                    return "UNKNOWN";
         }
     }
@@ -85,7 +88,9 @@ namespace converter {
      * @return Numeric representation
      */
     inline int sideToNumeric(Side side) {
-        return side == Side::BUY ? 1 : 2;
+        if (side == Side::BUY) return 1;
+        if (side == Side::SELL) return 2;
+        return 0;  // For INVALID
     }
 
     /**
@@ -119,7 +124,7 @@ namespace converter {
     }
 
     /**
-     * Convert ExecutionStatus enum to short CSV format (New, Fill, Rejected, Pfill)
+     * Convert ExecutionStatus enum to short CSV format (New, Fill, Reject, Pfill)
      * @param status ExecutionStatus enum value
      * @return Short string representation
      */
@@ -128,7 +133,7 @@ namespace converter {
             case ExecutionStatus::QUEUED:           return "New";        // Added to order book
             case ExecutionStatus::FILLED:           return "Fill";       // Fully matched
             case ExecutionStatus::PARTIAL_FILLED:   return "Pfill";      // Partially matched
-            case ExecutionStatus::REJECTED:         return "Rejected";   // Validation failed
+            case ExecutionStatus::REJECTED:         return "Reject";     // Validation failed
             default:                                return "UNKNOWN";
         }
     }
@@ -138,8 +143,7 @@ namespace converter {
     /**
      * Convert string to Instrument enum (case-insensitive)
      * @param str String representation (e.g., "Rose", "ROSE", "rose")
-     * @return Instrument enum value
-     * @throws std::invalid_argument if string is not recognized
+     * @return Instrument enum value, or INVALID if not recognized
      */
     inline Instrument strToInstrument(const std::string& str) {
         // Case-insensitive comparison
@@ -151,7 +155,9 @@ namespace converter {
         if (lower_str == "lotus")     return Instrument::LOTUS;
         if (lower_str == "tulip")     return Instrument::TULIP;
         if (lower_str == "orchid")    return Instrument::ORCHID;
-        throw std::invalid_argument("Unknown instrument: " + str);
+        
+        // Return INVALID for unknown instruments instead of throwing
+        return Instrument::INVALID;
     }
 
     /**
@@ -169,13 +175,13 @@ namespace converter {
     /**
      * Convert numeric value to Side enum (1=BUY, 2=SELL)
      * @param num Numeric side value
-     * @return Side enum value
-     * @throws std::invalid_argument if num is not 1 or 2
+     * @return Side enum value, or INVALID if not 1 or 2
      */
     inline Side numericToSide(int num) {
         if (num == 1) return Side::BUY;
         if (num == 2) return Side::SELL;
-        throw std::invalid_argument("Side must be 1 (BUY) or 2 (SELL), got " + std::to_string(num));
+        // Return INVALID for unknown sides instead of throwing
+        return Side::INVALID;
     }
 
     /**
