@@ -1,0 +1,237 @@
+#pragma once
+
+#include <string>
+#include <stdexcept>
+#include <cctype>
+#include <chrono>
+#include <iomanip>
+#include <sstream>
+
+namespace flower_exchange {
+
+/**
+ * Represents the type of flower being traded
+ * Valid instruments: Rose, Lavender, Lotus, Tulip, Orchid
+ */
+enum class Instrument {
+    ROSE = 0,
+    LAVENDER = 1,
+    LOTUS = 2,
+    TULIP = 3,
+    ORCHID = 4,
+    INVALID = 5      // For invalid/unparseable instruments
+};
+
+/**
+ * Represents the side of an order (buy or sell)
+ */
+enum class Side {
+    BUY = 0,
+    SELL = 1,
+    INVALID = 2    // For invalid/unparseable sides
+};
+
+/**
+ * Represents the current status of an order in the system
+ */
+enum class OrderStatus {
+    PENDING = 0,      // Just created, not yet submitted
+    QUEUED = 1,       // In order book, waiting to be matched
+    REJECTED = 2,     // Validation failed
+    PARTIALLY_FILLED = 3,  // Some quantity matched
+    FILLED = 4        // Fully matched
+};
+
+/**
+ * Represents the execution status of a trade
+ */
+enum class ExecutionStatus {
+    QUEUED = 0,           // Order added to book, no match
+    FILLED = 1,           // Order matched, quantity filled completely
+    REJECTED = 2,         // Order rejected
+    PARTIAL_FILLED = 3    // Order partially filled (some quantity matched, remainder in book)
+};
+
+/**
+ * Helper functions for enum conversion
+ */
+namespace converter {
+    /**
+     * Convert Instrument enum to string
+     * @param inst Instrument enum value
+     * @return String representation
+     */
+    inline const char* instrumentToString(Instrument inst) {
+        switch (inst) {
+            case Instrument::ROSE:      return "Rose";
+            case Instrument::LAVENDER:  return "Lavender";
+            case Instrument::LOTUS:     return "Lotus";
+            case Instrument::TULIP:     return "Tulip";
+            case Instrument::ORCHID:    return "Orchid";
+            case Instrument::INVALID:   return "";
+            default:                    return "UNKNOWN";
+        }
+    }
+
+    /**
+     * Convert Side enum to string
+     * @param side Side enum value
+     * @return String representation
+     */
+    inline const char* sideToString(Side side) {
+        return side == Side::BUY ? "BUY" : "SELL";
+    }
+
+    /**
+     * Convert Side enum to numeric value (1=BUY, 2=SELL)
+     * @param side Side enum value
+     * @return Numeric representation
+     */
+    inline int sideToNumeric(Side side) {
+        if (side == Side::BUY) return 1;
+        if (side == Side::SELL) return 2;
+        return 0;  // For INVALID
+    }
+
+    /**
+     * Convert OrderStatus enum to string
+     * @param status OrderStatus enum value
+     * @return String representation
+     */
+    inline const char* orderStatusToString(OrderStatus status) {
+        switch (status) {
+            case OrderStatus::PENDING:           return "PENDING";
+            case OrderStatus::QUEUED:            return "QUEUED";
+            case OrderStatus::REJECTED:          return "REJECTED";
+            case OrderStatus::PARTIALLY_FILLED:  return "PARTIALLY_FILLED";
+            case OrderStatus::FILLED:            return "FILLED";
+            default:                             return "UNKNOWN";
+        }
+    }
+
+    /**
+     * Convert ExecutionStatus enum to string
+     * @param status ExecutionStatus enum value
+     * @return String representation
+     */
+    inline const char* executionStatusToString(ExecutionStatus status) {
+        switch (status) {
+            case ExecutionStatus::QUEUED:   return "QUEUED";
+            case ExecutionStatus::FILLED:   return "FILLED";
+            case ExecutionStatus::REJECTED: return "REJECTED";
+            default:                        return "UNKNOWN";
+        }
+    }
+
+    /**
+     * Convert ExecutionStatus enum to numeric code for CSV output
+     * 0 = New (QUEUED)
+     * 1 = Rejected (REJECTED)
+     * 2 = Fill (FILLED)
+     * 3 = Pfill (PARTIAL_FILLED)
+     * @param status ExecutionStatus enum value
+     * @return Numeric code
+     */
+    inline int executionStatusToCode(ExecutionStatus status) {
+        switch (status) {
+            case ExecutionStatus::QUEUED:           return 0;    // New
+            case ExecutionStatus::REJECTED:         return 1;    // Rejected
+            case ExecutionStatus::FILLED:           return 2;    // Fill
+            case ExecutionStatus::PARTIAL_FILLED:   return 3;    // Pfill
+            default:                                return -1;
+        }
+    }
+
+    // ==================== STRING TO ENUM CONVERTERS ====================
+
+    /**
+     * Convert string to Instrument enum (case-insensitive)
+     * @param str String representation (e.g., "Rose", "ROSE", "rose")
+     * @return Instrument enum value, or INVALID if not recognized
+     */
+    inline Instrument strToInstrument(const std::string& str) {
+        // Case-insensitive comparison
+        std::string lower_str = str;
+        for (auto& c : lower_str) c = std::tolower(c);
+        
+        if (lower_str == "rose")      return Instrument::ROSE;
+        if (lower_str == "lavender")  return Instrument::LAVENDER;
+        if (lower_str == "lotus")     return Instrument::LOTUS;
+        if (lower_str == "tulip")     return Instrument::TULIP;
+        if (lower_str == "orchid")    return Instrument::ORCHID;
+        
+        // Return INVALID for unknown instruments instead of throwing
+        return Instrument::INVALID;
+    }
+
+    /**
+     * Convert string to Side enum
+     * @param str String representation
+     * @return Side enum value
+     * @throws std::invalid_argument if string is not recognized
+     */
+    inline Side strToSide(const std::string& str) {
+        if (str == "BUY")  return Side::BUY;
+        if (str == "SELL") return Side::SELL;
+        throw std::invalid_argument("Unknown side: " + str);
+    }
+
+    /**
+     * Convert numeric value to Side enum (1=BUY, 2=SELL)
+     * @param num Numeric side value
+     * @return Side enum value, or INVALID if not 1 or 2
+     */
+    inline Side numericToSide(int num) {
+        if (num == 1) return Side::BUY;
+        if (num == 2) return Side::SELL;
+        // Return INVALID for unknown sides instead of throwing
+        return Side::INVALID;
+    }
+
+    /**
+     * Convert string to ExecutionStatus enum
+     * @param str String representation
+     * @return ExecutionStatus enum value
+     * @throws std::invalid_argument if string is not recognized
+     */
+    inline ExecutionStatus strToExecutionStatus(const std::string& str) {
+        if (str == "QUEUED")   return ExecutionStatus::QUEUED;
+        if (str == "FILLED")   return ExecutionStatus::FILLED;
+        if (str == "REJECTED") return ExecutionStatus::REJECTED;
+        throw std::invalid_argument("Unknown execution status: " + str);
+    }
+
+    /**
+     * Convert string to OrderStatus enum
+     * @param str String representation
+     * @return OrderStatus enum value
+     * @throws std::invalid_argument if string is not recognized
+     */
+    inline OrderStatus strToOrderStatus(const std::string& str) {
+        if (str == "PENDING")           return OrderStatus::PENDING;
+        if (str == "QUEUED")            return OrderStatus::QUEUED;
+        if (str == "REJECTED")          return OrderStatus::REJECTED;
+        if (str == "PARTIALLY_FILLED")  return OrderStatus::PARTIALLY_FILLED;
+        if (str == "FILLED")            return OrderStatus::FILLED;
+        throw std::invalid_argument("Unknown order status: " + str);
+    }
+
+    /**
+     * Generate current timestamp in format YYYYMMDD-HHMMSS.sss
+     * @return Formatted timestamp string
+     */
+    inline std::string getCurrentTimestamp() {
+        auto now = std::chrono::system_clock::now();
+        auto time_t_now = std::chrono::system_clock::to_time_t(now);
+        auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+            now.time_since_epoch()) % 1000;
+        
+        std::ostringstream oss;
+        oss << std::put_time(std::localtime(&time_t_now), "%Y%m%d-%H%M%S");
+        oss << "." << std::setfill('0') << std::setw(3) << ms.count();
+        
+        return oss.str();
+    }
+}
+
+} 
