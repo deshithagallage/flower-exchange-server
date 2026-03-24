@@ -21,7 +21,7 @@ private:
     OrderValidator validator_;
 
     // Thread-safe exchange order ID generator
-    std::atomic<int> next_exchange_order_id_{1000};
+    std::atomic<int> next_exchange_order_id_{1};
 
     // Default client ID fallback
     const std::string default_client_id_ = "CLIENT_001";
