@@ -36,51 +36,73 @@ std::vector<OrderPtr> CSVReader::readOrders(const std::string& filename) const {
             continue;
         }
 
-        try {
-            auto parts = split(line, ",");
+        // Parse fields with error handling - create orders even with invalid data
+        // The validator will later reject them with proper error messages
+        auto parts = split(line, ",");
 
-            if (parts.size() != 5) {
-                throw std::invalid_argument(
-                    "Expected 5 columns, got " + std::to_string(parts.size()) +
-                    "\n  Expected format: Client Order ID, Instrument, Side, Quantity, Price"
-                );
+        if (parts.size() != 5) {
+            // Pad with empty strings if not enough columns
+            while (parts.size() < 5) {
+                parts.push_back("");
             }
-
-            // Parse each field
-            std::string client_order_id = trim(parts[0]);
-            std::string instrument_str = trim(parts[1]);
-            int side_numeric = stringToInt(trim(parts[2]));
-            int quantity = stringToInt(trim(parts[3]));
-            double price = stringToDouble(trim(parts[4]));
-
-            // Convert strings to enums
-            Instrument inst = strToInstrument(instrument_str);
-            Side side = numericToSide(side_numeric);
-
-            // Generate exchange order ID (ordN format)
-            order_counter++;
-            std::string exchange_order_id = "ord" + std::to_string(order_counter);
-
-            // Create order with client_order_id as both client_id and client_order_id
-            auto order = std::make_shared<Order>(
-                client_order_id,      // client_id (using client's ID)
-                client_order_id,      // client_order_id (same as above)
-                inst,
-                side,
-                price,
-                quantity
-            );
-
-            // Set the exchange order ID
-            order->setExchangeOrderId(exchange_order_id);
-
-            orders.push_back(order);
-        } catch (const std::exception& e) {
-            throw std::invalid_argument(
-                std::string("Line ") + std::to_string(line_number) + 
-                ": " + e.what()
-            );
         }
+
+        // Parse each field with safe defaults for invalid data
+        std::string client_order_id = trim(parts[0]);
+
+        // Keep empty client_order_id as is - the validator will reject it
+        // If truly empty, use a space so it can be tracked in output
+        if (client_order_id.empty()) {
+            client_order_id = " ";  // Space character will fail alphanumeric validation
+        }
+
+        std::string instrument_str = trim(parts[1]);
+
+        // Safe parse for numeric fields - use invalid values that will be caught by validator
+        int side_numeric = 0;
+        try {
+            side_numeric = stringToInt(trim(parts[2]));
+        } catch (...) {
+            side_numeric = 0;  // Will map to INVALID side
+        }
+
+        int quantity = -1;  // Invalid quantity will be caught by validator
+        try {
+            quantity = stringToInt(trim(parts[3]));
+        } catch (...) {
+            quantity = -1;
+        }
+
+        double price = -1.0;  // Invalid price will be caught by validator
+        try {
+            price = stringToDouble(trim(parts[4]));
+        } catch (...) {
+            price = -1.0;
+        }
+
+        // Convert strings to enums (INVALID enum values for bad data)
+        Instrument inst = strToInstrument(instrument_str);
+        Side side = numericToSide(side_numeric);
+
+        // Generate exchange order ID (ordN format)
+        order_counter++;
+        std::string exchange_order_id = "ord" + std::to_string(order_counter);
+
+        // Create order with parsed data (even if invalid)
+        // The order validator will reject invalid orders later
+        auto order = std::make_shared<Order>(
+            client_order_id,      // client_id (using client's ID)
+            client_order_id,      // client_order_id (same as above)
+            inst,
+            side,
+            price,
+            quantity
+        );
+
+        // Set the exchange order ID
+        order->setExchangeOrderId(exchange_order_id);
+
+        orders.push_back(order);
     }
 
     file.close();

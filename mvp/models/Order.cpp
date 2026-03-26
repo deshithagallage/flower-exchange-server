@@ -21,19 +21,11 @@ Order::Order(const std::string& client_id,
       priority_sequence_(0),
       status_(OrderStatus::PENDING),
       timestamp_("") {
-    
-    
-    if (client_id.empty()) {
-        throw std::invalid_argument("Client ID cannot be empty");
-    }
-    
-    if (client_order_id.empty()) {
-        throw std::invalid_argument("Order ID cannot be empty");
-    }
-    
-    // Price and quantity validation is done by OrderValidator, not here
+
+    // All validation (client_id, client_order_id, price, quantity, etc.)
+    // is done by OrderValidator, not here.
     // This allows orders with invalid values to be created and properly rejected
-    // with detailed validation error messages
+    // with detailed validation error messages.
 }
 
 } 
