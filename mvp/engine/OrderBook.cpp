@@ -62,10 +62,13 @@ std::vector<ExecutionReportPtr> OrderBook::processBuyOrder(OrderPtr incoming) {
             reports.push_back(buy_report);
 
             // Generate report for the MATCHED SELL order
-            // Sell order gets FILLED since it will be removed from queue
+            // Determine if sell order is fully filled or partially filled
+            ExecutionStatus sell_status = sell_order->isFilled() ?
+                ExecutionStatus::FILLED : ExecutionStatus::PARTIAL_FILLED;
+
             auto sell_report = generateReport(
                 sell_order,
-                ExecutionStatus::FILLED,
+                sell_status,
                 "",
                 sell_price,
                 fill_qty
@@ -150,9 +153,13 @@ std::vector<ExecutionReportPtr> OrderBook::processSellOrder(OrderPtr incoming) {
             reports.push_back(sell_report);
 
             // Generate report for the MATCHED BUY order
+            // Determine if buy order is fully filled or partially filled
+            ExecutionStatus buy_status = buy_order->isFilled() ?
+                ExecutionStatus::FILLED : ExecutionStatus::PARTIAL_FILLED;
+
             auto buy_report = generateReport(
                 buy_order,
-                ExecutionStatus::FILLED,
+                buy_status,
                 "",
                 buy_price,
                 fill_qty
