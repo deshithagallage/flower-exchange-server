@@ -1,138 +1,144 @@
-# Flower Exchange MVP - Running Guide
+# Flower Exchange MVP
 
-## Quick Start
-
-### Prerequisites
-- Windows: No prerequisites needed (executable included)
-- Linux/macOS: `g++` or `clang`, `cmake`
+A command-line order matching engine for flower trading with FIFO order book matching.
 
 ---
 
-## Running the Application
+## Object Details
 
-### On Windows (from `server/mvp` folder)
+### Core Components
 
-**Option 1: Command Prompt or PowerShell**
-```bash
-.\flower-exchange.exe input.csv output.csv
-```
+**Order**
+- Unique order identifier
+- Client order reference
+- Instrument (Rose, Tulip, Lilies, Sunflower, Daisy)
+- Side (1=BUY, 2=SELL)
+- Quantity (10-1000, multiples of 10)
+- Price (decimal > 0)
 
-**Option 2: With Sample Data**
-```bash
-.\flower-exchange.exe sample_orders.csv results.csv
-```
+**OrderBook**
+- Separate order books per instrument
+- Buy side (ascending price)
+- Sell side (ascending price)
+- FIFO matching (price-time priority)
 
----
+**Exchange**
+- Manages 5 order books (one per instrument)
+- Processes orders sequentially
+- Generates execution reports
 
-### On Linux/macOS
-
-**Step 1: Build (if not already built)**
-```bash
-mkdir -p build
-cd build
-cmake ..
-make
-cd ..
-```
-
-**Step 2: Run**
-```bash
-./build/flower-exchange input.csv output.csv
-```
+**ExecutionReport**
+- Order ID (auto-generated)
+- Client Order ID (from input)
+- Execution Status (New, Fill, Rejected)
+- Filled Quantity
+- Execution Price
 
 ---
 
 ## Input Format
 
-Create a CSV file with 6 columns:
+**File:** `orders.csv`
 
 ```csv
-CLIENT_ID,ORDER_ID,INSTRUMENT,SIDE,PRICE,QUANTITY
-CLIENT_001,ORD_001,ROSE,BUY,50.25,100
-CLIENT_001,ORD_002,TULIP,SELL,45.50,50
-CLIENT_002,ORD_003,LILIES,BUY,100.00,200
+Client Order ID,Instrument,Side,Quantity,Price
+CLIENT_001,Rose,1,100,55.00
+CLIENT_002,Rose,2,100,55.00
+CLIENT_003,Tulip,1,200,45.50
 ```
 
-**Column Details:**
-- `CLIENT_ID`: Any string identifier
-- `ORDER_ID`: Unique order reference
-- `INSTRUMENT`: One of: `ROSE`, `TULIP`, `LILIES`, `SUNFLOWER`, `DAISY`
-- `SIDE`: `BUY` or `SELL`
-- `PRICE`: Decimal number > 0
-- `QUANTITY`: 10-1000, multiple of 10
+**Columns:**
+- **Client Order ID**: String (any value)
+- **Instrument**: Rose, Tulip, Lilies, Sunflower, Daisy (case-insensitive)
+- **Side**: 1 (BUY) or 2 (SELL)
+- **Quantity**: 10-1000 (must be multiple of 10)
+- **Price**: Decimal > 0
 
 ---
 
 ## Output Format
 
-The application generates a report CSV with execution results:
+**File:** `execution_report.csv`
 
 ```csv
-EXCHANGE_ORDER_ID,INSTRUMENT,SIDE,STATUS,FILLED_QUANTITY,EXECUTION_PRICE,REASON
-EXO_1000,ROSE,BUY,QUEUED,0,0.00,Added to order book
-EXO_1001,ROSE,SELL,FILLED,50,50.25,
-EXO_1002,TULIP,BUY,QUEUED,0,0.00,Added to order book
-EXO_1003,TULIP,SELL,FILLED,80,45.50,
+Order ID,Client Order ID,Instrument,Side,Exec Status,Quantity,Price
+ord1,CLIENT_001,Rose,1,Fill,100,55.00
+ord2,CLIENT_002,Rose,2,Fill,100,55.00
+ord3,CLIENT_003,Tulip,1,New,0,0.00
 ```
 
-**Status Codes:**
-- `QUEUED` - Added to order book, awaiting match
-- `FILLED` - Order fully matched
-- `REJECTED` - Order validation failed
+**Columns:**
+- **Order ID**: ord1, ord2, ... (auto-generated)
+- **Client Order ID**: From input
+- **Instrument**: From input
+- **Side**: 1 or 2
+- **Exec Status**: New (queued), Fill (matched), Rejected (validation failed)
+- **Quantity**: Filled quantity
+- **Price**: Execution price
+
+---
+
+## How to Run
+
+### Build
+
+```bash
+cd server/mvp
+g++ -o flower-exchange main.cpp engine/*.cpp models/*.cpp services/*.cpp utils/*.cpp
+```
+
+### Execute
+
+```bash
+# Windows
+.\flower-exchange.exe input.csv output.csv
+
+# Linux/macOS
+./flower-exchange input.csv output.csv
+```
+
+**Sample Input Files:** Sample input CSV files (`orders_1.csv` through `orders_7.csv`) are available in the `sample_inputs/` folder for testing.
+
+### Example
+
+```bash
+.\flower-exchange.exe orders.csv execution_report.csv
+```
+
+The application reads `orders.csv`, processes all orders through the matching engine, and writes results to `execution_report.csv`.
+
+---
+
+## Validation Rules
+
+- Instrument must be one of: Rose, Tulip, Lilies, Sunflower, Daisy
+- Side must be 1 (BUY) or 2 (SELL)
+- Quantity must be 10-1000 and a multiple of 10
+- Price must be > 0
+
+Invalid orders are rejected with status "Rejected".
 
 ---
 
 ## Example Workflow
 
-**Step 1: Create input file** (`test_orders.csv`)
+**Input:** `orders.csv`
 ```csv
-CLIENT_ID,ORDER_ID,INSTRUMENT,SIDE,PRICE,QUANTITY
-TRADER_A,ORD_1,ROSE,BUY,50.00,100
-TRADER_B,ORD_2,ROSE,SELL,50.00,80
-TRADER_C,ORD_3,TULIP,BUY,45.00,200
+Client Order ID,Instrument,Side,Quantity,Price
+TRADER_A,Rose,1,100,55.00
+TRADER_B,Rose,2,100,55.00
+TRADER_C,Tulip,1,200,45.50
 ```
 
-**Step 2: Run the exchange**
-```powershell
-.\flower-exchange.exe test_orders.csv execution_report.csv
-```
-
-**Step 3: View results**
-```powershell
-cat execution_report.csv
-```
-
----
-
-## Troubleshooting
-
-| Problem | Solution |
-|---------|----------|
-| File not found | Use full path: `.\flower-exchange.exe C:\data\input.csv C:\data\output.csv` |
-| Invalid quantity | Ensure quantity is 10-1000 and multiple of 10 |
-| Unknown instrument | Use exact names: ROSE, TULIP, LILIES, SUNFLOWER, DAISY |
-| Price must be positive | Ensure PRICE column > 0 |
-| CSV format error | Check column order and data types match specification |
-
----
-
-## Performance
-
-- **1,000 orders:** < 50 ms
-- **10,000 orders:** < 500 ms
-- **100,000 orders:** < 5 seconds
-
----
-
-## Docker (Optional)
-
-To run in Docker:
-
+**Command:**
 ```bash
-docker build -t flower-exchange .
-docker run -v C:\data:/data flower-exchange /data/input.csv /data/output.csv
+.\flower-exchange.exe orders.csv report.csv
 ```
 
----
-
-For detailed architecture and API information, see `README_COMPREHENSIVE.md`
+**Output:** `report.csv`
+```csv
+Order ID,Client Order ID,Instrument,Side,Exec Status,Quantity,Price
+ord1,TRADER_A,Rose,1,Fill,100,55.00
+ord2,TRADER_B,Rose,2,Fill,100,55.00
+ord3,TRADER_C,Tulip,1,New,0,0.00
+```
