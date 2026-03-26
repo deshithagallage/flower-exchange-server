@@ -1,0 +1,6 @@
+Order ID,Client Order ID,Instrument,Side,Status,Quantity,Price,Transaction Time,Reason
+ord1,aa13,,1,1,100,55.00,20260326-193247.168,Invalid instrument
+ord2,aa14,Rose,0,1,100.00,65.00,20260326-193247.169,Invalid side
+ord3,aa15,Lavender,2,1,101.00,1.00,20260326-193247.169,Invalid size
+ord4,aa16,Tulip,1,1,100.00,-1.00,20260326-193247.169,Invalid price
+ord5,aa17,Orchid,1,1,1000.00,-1.00,20260326-193247.169,Invalid price
